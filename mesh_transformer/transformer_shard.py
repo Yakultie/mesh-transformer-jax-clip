@@ -45,7 +45,7 @@ class CausalTransformerShard(hk.Module):
         else:
             self.rpe = None
 
-        self.encode, _ = clip_model.load('model/text_clip.pickle')
+        self.encode, _ = clip_model.load('model/text_clip.pickle', config["seq"])
 
     def eval(self, context, target, z_loss=0., mask=0.0):
         input_len = context.shape[0]
