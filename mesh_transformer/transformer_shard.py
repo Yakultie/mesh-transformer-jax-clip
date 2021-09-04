@@ -16,6 +16,7 @@ from mesh_transformer.layers import EmbeddingShard, TransformerLayerShard, Relat
     TransformerLayerShardV2, Projection, EmbeddingShardV2
 from mesh_transformer.util import to_f32, to_bf16, maybe_shard, head_print, global_norm
 from jax.experimental import PartitionSpec as P
+from text_clip import clip_model 
 
 
 class CausalTransformerShard(hk.Module):
@@ -44,6 +45,8 @@ class CausalTransformerShard(hk.Module):
         else:
             self.rpe = None
 
+        self.encode, _ = clip_model.load('model/text_clip.pickle')
+
     def eval(self, context, target, z_loss=0., mask=0.0):
         input_len = context.shape[0]
 
@@ -55,9 +58,12 @@ class CausalTransformerShard(hk.Module):
         attn_bias += mask
 
         x = hk.remat(self.embed)(context)
+        y = self.encode(context)
+        y = jnp.concatenate([x, y], axis=-1)
 
         for l in self.transformer_layers:
-            x = x + hk.remat(l)(x, attn_bias)
+            x = x + hk.remat(l)(y, attn_bias)
+            y = x
 
         return hk.remat(self.proj.loss)(x, target, z_loss)
 
