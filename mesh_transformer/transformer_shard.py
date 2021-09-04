@@ -58,8 +58,8 @@ class CausalTransformerShard(hk.Module):
         attn_bias += mask
 
         x = hk.remat(self.embed)(context)
-        print(f'context shape {context.shape}')
-        y = self.encode(context)
+        print(f'context shape {jnp.atleast_2d(context).shape}')
+        y = self.encode(jnp.atleast_2d(context))
         y = jnp.concatenate([x, y], axis=-1)
 
         for l in self.transformer_layers:
