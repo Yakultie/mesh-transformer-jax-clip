@@ -45,7 +45,9 @@ class CausalTransformerShard(hk.Module):
         else:
             self.rpe = None
 
-        self.encode, _ = clip_model.load('model/text_clip.pickle', config["seq"])
+        self.encode = None
+        if "clip" in config:
+            self.encode, _ = clip_model.load('model/text_clip.pickle', config["seq"])
 
     def eval(self, context, target, z_loss=0., mask=0.0):
         input_len = context.shape[0]
@@ -58,10 +60,11 @@ class CausalTransformerShard(hk.Module):
         attn_bias += mask
 
         x = hk.remat(self.embed)(context)
-        y = self.encode(jnp.atleast_2d(context))
-        if y.ndim > x.ndim: y = jnp.squeeze(y,0)
-
-        y = jnp.concatenate([x, y], axis=-1)
+        y = x
+        if self.encode:
+            y = self.encode(jnp.atleast_2d(context))
+            if y.ndim > x.ndim: y = jnp.squeeze(y,0)
+            y = jnp.concatenate([x, y], axis=-1)
 
         for l in self.transformer_layers:
             x = x + hk.remat(l)(y, attn_bias)
